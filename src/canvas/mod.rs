@@ -46,15 +46,15 @@ impl Index<Pos> for Canvas {
     type Output = char;
 
     fn index(&self, pos: Pos) -> &Self::Output {
-        let idx = self.index_of(pos).unwrap_or_else(|err| panic!("{err}"));
-        &self.data[idx]
+        let idx = self.index_of(pos);
+        unsafe { self.data.get_unchecked(idx) }
     }
 }
 
 impl IndexMut<Pos> for Canvas {
     fn index_mut(&mut self, pos: Pos) -> &mut Self::Output {
-        let idx = self.index_of(pos).unwrap_or_else(|err| panic!("{err}"));
-        &mut self.data[idx]
+        let idx = self.index_of(pos);
+        unsafe { self.data.get_unchecked_mut(idx) }
     }
 }
 
@@ -67,27 +67,61 @@ impl Canvas {
         pos.row < self.size.rows && pos.col < self.size.cols
     }
 
-    fn index_of(&self, pos: Pos) -> Result<usize, CanvasError> {
+    fn index_of_checked(&self, pos: Pos) -> Result<usize, CanvasError> {
         if !self.is_in_bounds(pos) {
             return Err(OutOfBounds(pos));
         }
 
-        Ok(pos.row * self.size.cols + pos.col)
+        Ok(self.index_of_internal(pos))
+    }
+
+    fn index_of(&self, pos: Pos) -> usize {
+        #[cfg(debug_assertions)]
+        { self.index_of_checked(pos).unwrap() }
+        #[cfg(not(debug_assertions))]
+        { self.index_of_internal(pos) }
+    }
+
+    #[inline(always)]
+    fn index_of_internal(&self, pos: Pos) -> usize {
+        pos.row * self.size.cols + pos.col
     }
 
     pub fn get(&self, pos: Pos) -> Result<char, CanvasError> {
-        let idx = self.index_of(pos)?;
+        let idx = self.index_of(pos);
         Ok(self.data[idx])
     }
 
-    pub fn get_mut(&mut self, pos: Pos) -> Result<&mut char, CanvasError> {
-        let idx = self.index_of(pos)?;
+    pub unsafe fn get_unchecked(&self, pos: Pos) -> char {
+        let idx = self.index_of(pos);
+        unsafe {
+            *self.data.get_unchecked(idx)
+        }
+    }
+
+    pub fn get_mut_checked(&mut self, pos: Pos) -> Result<&mut char, CanvasError> {
+        let idx = self.index_of_checked(pos)?;
         Ok(&mut self.data[idx])
     }
 
+    pub fn get_mut(&mut self, pos: Pos) -> &mut char {
+        self.get_mut_checked(pos).expect("Invalid Pos passed to Canvas::get_mut")
+    }
+
+    pub unsafe fn get_mut_unchecked(&mut self, pos: Pos) -> &mut char {
+        let idx = self.index_of(pos);
+        unsafe { self.data.get_unchecked_mut(idx) }
+    }
+
     pub fn set(&mut self, pos: Pos, ch: char) -> Result<(), CanvasError> {
-        *self.get_mut(pos)? = ch;
+        *self.get_mut_checked(pos)? = ch;
         Ok(())
+    }
+
+    pub unsafe fn set_unchecked(&mut self, pos: Pos, ch: char) {
+        unsafe {
+            *self.get_mut_unchecked(pos) = ch;
+        }
     }
 
     pub fn get_row_slice(&self, pos: Pos, len: usize) -> Result<&[char], CanvasError> {
@@ -95,7 +129,7 @@ impl Canvas {
             return Err(OutOfBounds(pos));
         }
 
-        let idx = self.index_of_unchecked(pos);
+        let idx = self.index_of(pos);
         Ok(&self.data[idx..idx + len])
     }
 
@@ -119,8 +153,15 @@ impl Canvas {
             return Err(OutOfBounds(pos));
         }
 
-        let idx = self.index_of_unchecked(pos);
+        let idx = self.index_of(pos);
         Ok(&mut self.data[idx..idx + len])
+    }
+
+    pub unsafe fn get_row_slice_mut_unchecked(&mut self, pos: Pos, len: usize) -> &mut [char] {
+        let idx = self.index_of(pos);
+        unsafe {
+            self.data.get_unchecked_mut(idx..idx + len)
+        }
     }
 
     pub fn get_rows_mut(
@@ -136,37 +177,6 @@ impl Canvas {
             .chunks_exact_mut(self.size.cols)
             .skip(start_row)
             .take(end_row - start_row))
-    }
-
-    fn index_of_unchecked(&self, pos: Pos) -> usize {
-        pos.row * self.size.cols + pos.col
-    }
-
-    pub unsafe fn get_unchecked(&self, pos: Pos) -> char {
-        let idx = self.index_of_unchecked(pos);
-        unsafe {
-            *self.data.get_unchecked(idx)
-        }
-    }
-
-    pub unsafe fn get_mut_unchecked(&mut self, pos: Pos) -> &mut char {
-        let idx = self.index_of_unchecked(pos);
-        unsafe {
-            self.data.get_unchecked_mut(idx)
-        }
-    }
-
-    pub unsafe fn set_unchecked(&mut self, pos: Pos, ch: char) {
-        unsafe {
-            *self.get_mut_unchecked(pos) = ch;
-        }
-    }
-
-    pub unsafe fn get_row_slice_mut_unchecked(&mut self, pos: Pos, len: usize) -> &mut [char] {
-        let idx = self.index_of_unchecked(pos);
-        unsafe {
-            self.data.get_unchecked_mut(idx..idx + len)
-        }
     }
 
     pub unsafe fn get_rows_mut_unchecked(

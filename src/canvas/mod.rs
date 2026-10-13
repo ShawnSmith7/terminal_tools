@@ -87,16 +87,16 @@ impl Canvas {
         pos.row * self.size.cols + pos.col
     }
 
-    pub fn get(&self, pos: Pos) -> Result<char, CanvasError> {
-        let idx = self.index_of(pos);
-        Ok(self.data[idx])
+    pub fn get_checked(&self, pos: Pos) -> Result<char, CanvasError> {
+        let idx = self.index_of_checked(pos)?;
+        unsafe { Ok(*self.data.get_unchecked(idx)) }
     }
 
-    pub unsafe fn get_unchecked(&self, pos: Pos) -> char {
-        let idx = self.index_of(pos);
-        unsafe {
-            *self.data.get_unchecked(idx)
-        }
+    pub fn get(&self, pos: Pos) -> char {
+        #[cfg(debug_assertions)]
+        { self.get_checked(pos).unwrap() }
+        #[cfg(not(debug_assertions))]
+        { *self.data.get_unchecked(idx) }
     }
 
     pub fn get_mut_checked(&mut self, pos: Pos) -> Result<&mut char, CanvasError> {

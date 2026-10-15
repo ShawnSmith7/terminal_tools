@@ -21,18 +21,16 @@ pub enum LineVariant {
 
 impl Draw for Line {
     fn draw(&self, canvas: &mut Canvas) {
-        unsafe {
-            match self.variant {
-                Horiz => self.draw_horiz(canvas),
-                other => {
-                    let rows = canvas.get_rows_mut(self.pos.row, self.pos.row + self.len);
+        match self.variant {
+            Horiz => self.draw_horiz(canvas),
+            other => {
+                let rows = canvas.get_rows_mut(self.pos.row, self.pos.row + self.len);
 
-                    match other {
-                        Horiz => unreachable!(),
-                        Vert => self.draw_vert(rows),
-                        DiagDown => self.draw_diag_down(rows),
-                        DiagUp => self.draw_diag_up(rows),
-                    }
+                match other {
+                    Horiz => unreachable!(),
+                    Vert => self.draw_vert(rows),
+                    DiagDown => self.draw_diag_down(rows),
+                    DiagUp => self.draw_diag_up(rows),
                 }
             }
         }
@@ -60,31 +58,25 @@ impl Line {
         }
     }
 
-    unsafe fn draw_horiz(&self, canvas: &mut Canvas) {
+    fn draw_horiz(&self, canvas: &mut Canvas) {
         canvas.get_row_slice_mut(self.pos, self.len).fill(self.ch);
     }
 
-    unsafe fn draw_vert<'a>(&self, rows: impl Iterator<Item = &'a mut [char]>) {
+    fn draw_vert<'a>(&self, rows: impl Iterator<Item = &'a mut [char]>) {
         for row in rows {
-            unsafe {
-                *row.get_unchecked_mut(self.pos.col) = self.ch;
-            }
+            unsafe { *row.get_unchecked_mut(self.pos.col) = self.ch; }
         }
     }
 
-    unsafe fn draw_diag_down<'a>(&self, rows: impl Iterator<Item = &'a mut [char]>) {
+    fn draw_diag_down<'a>(&self, rows: impl Iterator<Item = &'a mut [char]>) {
         for (i, row) in rows.enumerate() {
-            unsafe {
-                *row.get_unchecked_mut(self.pos.col + 2 * i) = self.ch;
-            }
+            unsafe { *row.get_unchecked_mut(self.pos.col + 2 * i) = self.ch; }
         }
     }
 
-    unsafe fn draw_diag_up<'a>(&self, rows: impl Iterator<Item = &'a mut [char]> + DoubleEndedIterator) {
+    fn draw_diag_up<'a>(&self, rows: impl Iterator<Item = &'a mut [char]> + DoubleEndedIterator) {
         for (i, row) in rows.rev().enumerate() {
-            unsafe {
-                *row.get_unchecked_mut(self.pos.col + 2 * i) = self.ch;
-            }
+            unsafe { *row.get_unchecked_mut(self.pos.col + 2 * i) = self.ch; }
         }
     }
 

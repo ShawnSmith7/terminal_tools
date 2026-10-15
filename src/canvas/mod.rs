@@ -192,7 +192,7 @@ impl Canvas {
         &self,
         start_row: usize,
         end_row: usize,
-    ) -> impl Iterator<Item = &[char]> + DoubleEndedIterator + ExactSizeIterator {
+    ) -> impl Iterator<Item = &[char]> + DoubleEndedIterator {
         let start_idx = start_row * self.size.cols;
         let end_idx = end_row * self.size.cols;
 

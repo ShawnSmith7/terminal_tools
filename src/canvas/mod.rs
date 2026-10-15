@@ -93,47 +93,74 @@ impl Canvas {
     }
 
     pub fn get(&self, pos: Pos) -> char {
-        #[cfg(debug_assertions)]
-        { self.get_checked(pos).unwrap() }
-        #[cfg(not(debug_assertions))]
-        { *self.data.get_unchecked(idx) }
+        let idx = self.index_of(pos);
+        unsafe { *self.data.get_unchecked(idx) }
     }
 
     pub fn get_mut_checked(&mut self, pos: Pos) -> Result<&mut char, CanvasError> {
         let idx = self.index_of_checked(pos)?;
-        Ok(&mut self.data[idx])
+        unsafe { Ok(self.data.get_unchecked_mut(idx)) }
     }
 
     pub fn get_mut(&mut self, pos: Pos) -> &mut char {
-        self.get_mut_checked(pos).expect("Invalid Pos passed to Canvas::get_mut")
-    }
-
-    pub unsafe fn get_mut_unchecked(&mut self, pos: Pos) -> &mut char {
         let idx = self.index_of(pos);
         unsafe { self.data.get_unchecked_mut(idx) }
     }
 
-    pub fn set(&mut self, pos: Pos, ch: char) -> Result<(), CanvasError> {
+    pub fn set_checked(&mut self, pos: Pos, ch: char) -> Result<(), CanvasError> {
         *self.get_mut_checked(pos)? = ch;
         Ok(())
     }
 
-    pub unsafe fn set_unchecked(&mut self, pos: Pos, ch: char) {
-        unsafe {
-            *self.get_mut_unchecked(pos) = ch;
-        }
+    pub fn set(&mut self, pos: Pos, ch: char) {
+        *self.get_mut(pos) = ch;
     }
 
-    pub fn get_row_slice(&self, pos: Pos, len: usize) -> Result<&[char], CanvasError> {
-        if !self.is_in_bounds(pos) || len > self.size.cols - pos.col {
+    pub fn get_row_slice_checked(&self, pos: Pos, len: usize) -> Result<&[char], CanvasError> {
+        let idx = self.index_of_checked(pos)?;
+
+        if len > self.size.cols.saturating_sub(pos.col) {
             return Err(OutOfBounds(pos));
         }
 
-        let idx = self.index_of(pos);
-        Ok(&self.data[idx..idx + len])
+        unsafe { Ok(self.data.get_unchecked(idx..idx + len)) }
     }
 
-    pub fn get_rows(
+    pub fn get_row_slice(&self, pos: Pos, len: usize) -> &[char] {
+        #[cfg(debug_assertions)]
+        {
+            self.get_row_slice_checked(pos, len).unwrap()
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            let idx = self.index_of(pos);
+            unsafe { &self.data.get_unchecked(idx..idx + len) }
+        }
+    }
+
+    pub fn get_row_slice_mut_checked(&mut self, pos: Pos, len: usize) -> Result<&mut [char], CanvasError> {
+        let idx = self.index_of_checked(pos)?;
+
+        if len > self.size.cols.saturating_sub(pos.col) {
+            return Err(OutOfBounds(pos));
+        }
+
+        unsafe { Ok(self.data.get_unchecked_mut(idx..idx + len)) }
+    }
+
+    pub fn get_row_slice_mut(&mut self, pos: Pos, len: usize) -> &mut [char] {
+        #[cfg(debug_assertions)]
+        {
+            self.get_row_slice_mut_checked(pos, len).unwrap()
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            let idx = self.index_of(pos);
+            unsafe { self.data.get_unchecked_mut(idx..idx + len) }
+        }
+    }
+
+    pub fn get_rows_checked(
         &self,
         start_row: usize,
         end_row: usize,
@@ -142,29 +169,41 @@ impl Canvas {
             return Err(OutOfBounds(Pos::new(start_row, 0)));
         }
 
-        Ok(self.data
-            .chunks_exact(self.size.cols)
-            .skip(start_row)
-            .take(end_row - start_row))
+        Ok(self.get_rows_internal(start_row, end_row))
     }
 
-    pub fn get_row_slice_mut(&mut self, pos: Pos, len: usize) -> Result<&mut [char], CanvasError> {
-        if !self.is_in_bounds(pos) || len > self.size.cols - pos.col {
-            return Err(OutOfBounds(pos));
+    pub fn get_rows(
+        &self,
+        start_row: usize,
+        end_row: usize,
+    ) -> impl Iterator<Item = &[char]> + DoubleEndedIterator {
+        #[cfg(debug_assertions)]
+        {
+            self.get_rows_checked(start_row, end_row).unwrap()
         }
-
-        let idx = self.index_of(pos);
-        Ok(&mut self.data[idx..idx + len])
+        #[cfg(not(debug_assertions))]
+        {
+            self.get_rows_internal(start_row, end_row)
+        }
     }
 
-    pub unsafe fn get_row_slice_mut_unchecked(&mut self, pos: Pos, len: usize) -> &mut [char] {
-        let idx = self.index_of(pos);
+    #[inline(always)]
+    fn get_rows_internal(
+        &self,
+        start_row: usize,
+        end_row: usize,
+    ) -> impl Iterator<Item = &[char]> + DoubleEndedIterator + ExactSizeIterator {
+        let start_idx = start_row * self.size.cols;
+        let end_idx = end_row * self.size.cols;
+
         unsafe {
-            self.data.get_unchecked_mut(idx..idx + len)
+            self.data
+                .get_unchecked(start_idx..end_idx)
+                .chunks_exact(self.size.cols)
         }
     }
 
-    pub fn get_rows_mut(
+    pub fn get_rows_mut_checked(
         &mut self,
         start_row: usize,
         end_row: usize
@@ -173,13 +212,26 @@ impl Canvas {
             return Err(OutOfBounds(Pos::new(start_row, 0)));
         }
 
-        Ok(self.data
-            .chunks_exact_mut(self.size.cols)
-            .skip(start_row)
-            .take(end_row - start_row))
+        Ok(self.get_rows_mut_internal(start_row, end_row))
     }
 
-    pub unsafe fn get_rows_mut_unchecked(
+    pub fn get_rows_mut(
+        &mut self,
+        start_row: usize,
+        end_row: usize,
+    ) -> impl Iterator<Item = &mut [char]> + DoubleEndedIterator {
+        #[cfg(debug_assertions)]
+        {
+            self.get_rows_mut_checked(start_row, end_row).unwrap()
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            self.get_rows_mut_internal(start_row, end_row)
+        }
+    }
+
+    #[inline(always)]
+    fn get_rows_mut_internal(
         &mut self,
         start_row: usize,
         end_row: usize,
@@ -214,10 +266,10 @@ impl Display for CanvasError {
 
 impl std::error::Error for CanvasError {}
 
-pub trait Draw {
-    fn draw(&self, canvas: &mut Canvas) -> Result<(), CanvasError>;
+pub trait DrawChecked {
+    fn draw_checked(&self, canvas: &mut Canvas) -> Result<(), CanvasError>;
 }
 
-pub trait DrawUnchecked {
-    unsafe fn draw_unchecked(&self, canvas: &mut Canvas);
+pub trait Draw {
+    fn draw(&self, canvas: &mut Canvas);
 }

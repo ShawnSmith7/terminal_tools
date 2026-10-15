@@ -1,4 +1,4 @@
-use super::{Pos, Canvas, CanvasError, Draw, DrawUnchecked};
+use super::{Pos, Canvas, CanvasError, DrawChecked, Draw};
 
 use LineVariant::*;
 use CanvasError::*;
@@ -19,13 +19,13 @@ pub enum LineVariant {
     DiagUp,
 }
 
-impl DrawUnchecked for Line {
-    unsafe fn draw_unchecked(&self, canvas: &mut Canvas) {
+impl Draw for Line {
+    fn draw(&self, canvas: &mut Canvas) {
         unsafe {
             match self.variant {
                 Horiz => self.draw_horiz(canvas),
                 other => {
-                    let rows = canvas.get_rows_mut_unchecked(self.pos.row, self.pos.row + self.len);
+                    let rows = canvas.get_rows_mut(self.pos.row, self.pos.row + self.len);
 
                     match other {
                         Horiz => unreachable!(),
@@ -39,15 +39,13 @@ impl DrawUnchecked for Line {
     }
 }
 
-impl Draw for Line {
-    fn draw(&self, canvas: &mut Canvas) -> Result<(), CanvasError> {
+impl DrawChecked for Line {
+    fn draw_checked(&self, canvas: &mut Canvas) -> Result<(), CanvasError> {
         if !self.is_in_bounds(canvas) {
             return Err(OutOfBounds(self.pos));
         }
 
-        unsafe {
-            self.draw_unchecked(canvas);
-        }
+        self.draw(canvas);
         Ok(())
     }
 }
@@ -63,9 +61,7 @@ impl Line {
     }
 
     unsafe fn draw_horiz(&self, canvas: &mut Canvas) {
-        unsafe {
-            canvas.get_row_slice_mut_unchecked(self.pos, self.len).fill(self.ch);
-        }
+        canvas.get_row_slice_mut(self.pos, self.len).fill(self.ch);
     }
 
     unsafe fn draw_vert<'a>(&self, rows: impl Iterator<Item = &'a mut [char]>) {

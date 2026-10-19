@@ -8,6 +8,8 @@ use std::ops::{Index, IndexMut};
 
 use CanvasError::*;
 
+pub type Result<T> = std::result::Result<T, CanvasError>;
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Canvas {
     size: Size,
@@ -67,7 +69,7 @@ impl Canvas {
         pos.row < self.size.rows && pos.col < self.size.cols
     }
 
-    fn index_of_checked(&self, pos: Pos) -> Result<usize, CanvasError> {
+    fn index_of_checked(&self, pos: Pos) -> Result<usize> {
         if !self.is_in_bounds(pos) {
             return Err(OutOfBounds(pos));
         }
@@ -87,7 +89,7 @@ impl Canvas {
         pos.row * self.size.cols + pos.col
     }
 
-    pub fn get_checked(&self, pos: Pos) -> Result<char, CanvasError> {
+    pub fn get_checked(&self, pos: Pos) -> Result<char> {
         let idx = self.index_of_checked(pos)?;
         unsafe { Ok(*self.data.get_unchecked(idx)) }
     }
@@ -97,7 +99,7 @@ impl Canvas {
         unsafe { *self.data.get_unchecked(idx) }
     }
 
-    pub fn get_mut_checked(&mut self, pos: Pos) -> Result<&mut char, CanvasError> {
+    pub fn get_mut_checked(&mut self, pos: Pos) -> Result<&mut char> {
         let idx = self.index_of_checked(pos)?;
         unsafe { Ok(self.data.get_unchecked_mut(idx)) }
     }
@@ -107,7 +109,7 @@ impl Canvas {
         unsafe { self.data.get_unchecked_mut(idx) }
     }
 
-    pub fn set_checked(&mut self, pos: Pos, ch: char) -> Result<(), CanvasError> {
+    pub fn set_checked(&mut self, pos: Pos, ch: char) -> Result<()> {
         *self.get_mut_checked(pos)? = ch;
         Ok(())
     }
@@ -116,7 +118,7 @@ impl Canvas {
         *self.get_mut(pos) = ch;
     }
 
-    pub fn get_row_slice_checked(&self, pos: Pos, len: usize) -> Result<&[char], CanvasError> {
+    pub fn get_row_slice_checked(&self, pos: Pos, len: usize) -> Result<&[char]> {
         let idx = self.index_of_checked(pos)?;
 
         if len > self.size.cols.saturating_sub(pos.col) {
@@ -138,7 +140,7 @@ impl Canvas {
         }
     }
 
-    pub fn get_row_slice_mut_checked(&mut self, pos: Pos, len: usize) -> Result<&mut [char], CanvasError> {
+    pub fn get_row_slice_mut_checked(&mut self, pos: Pos, len: usize) -> Result<&mut [char]> {
         let idx = self.index_of_checked(pos)?;
 
         if len > self.size.cols.saturating_sub(pos.col) {
@@ -164,7 +166,7 @@ impl Canvas {
         &self,
         start_row: usize,
         end_row: usize,
-    ) -> Result<impl Iterator<Item = &[char]> + DoubleEndedIterator, CanvasError> {
+    ) -> Result<impl Iterator<Item = &[char]> + DoubleEndedIterator> {
         if start_row > end_row || end_row > self.size.rows {
             return Err(OutOfBounds(Pos::new(start_row, 0)));
         }
@@ -207,7 +209,7 @@ impl Canvas {
         &mut self,
         start_row: usize,
         end_row: usize
-    ) -> Result<impl Iterator<Item = &mut [char]> + DoubleEndedIterator, CanvasError> {
+    ) -> Result<impl Iterator<Item = &mut [char]> + DoubleEndedIterator> {
         if start_row > end_row || end_row > self.size.rows {
             return Err(OutOfBounds(Pos::new(start_row, 0)));
         }
@@ -267,7 +269,7 @@ impl Display for CanvasError {
 impl std::error::Error for CanvasError {}
 
 pub trait DrawChecked {
-    fn draw_checked(&self, canvas: &mut Canvas) -> Result<(), CanvasError>;
+    fn draw_checked(&self, canvas: &mut Canvas) -> Result<()>;
 }
 
 pub trait Draw {

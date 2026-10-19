@@ -1,4 +1,4 @@
-use super::{Pos, Canvas, CanvasError, DrawChecked, Draw};
+use super::{Pos, Canvas, CanvasError, DrawChecked, Draw, Result};
 
 use LineVariant::*;
 use CanvasError::*;
@@ -38,7 +38,7 @@ impl Draw for Line {
 }
 
 impl DrawChecked for Line {
-    fn draw_checked(&self, canvas: &mut Canvas) -> Result<(), CanvasError> {
+    fn draw_checked(&self, canvas: &mut Canvas) -> Result<()> {
         if !self.is_in_bounds(canvas) {
             return Err(OutOfBounds(self.pos));
         }

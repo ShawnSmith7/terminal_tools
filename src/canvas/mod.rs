@@ -3,12 +3,13 @@ mod prims;
 
 pub use prims::{Size, Pos};
 
-use std::fmt::{self, Display, Formatter};
-use std::ops::{Index, IndexMut};
+use std::{fmt, ops, result};
+use fmt::{Display, Formatter};
+use ops::{Index, IndexMut};
 
 use CanvasError::*;
 
-pub type Result<T> = std::result::Result<T, CanvasError>;
+pub type Result<T> = result::Result<T, CanvasError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Canvas {

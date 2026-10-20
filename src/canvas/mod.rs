@@ -9,7 +9,7 @@ use ops::{Index, IndexMut};
 
 use CanvasError::*;
 
-pub type Result<T> = result::Result<T, CanvasError>;
+pub type Result<T = ()> = result::Result<T, CanvasError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Canvas {
@@ -110,7 +110,7 @@ impl Canvas {
         unsafe { self.data.get_unchecked_mut(idx) }
     }
 
-    pub fn set_checked(&mut self, pos: Pos, ch: char) -> Result<()> {
+    pub fn set_checked(&mut self, pos: Pos, ch: char) -> Result {
         *self.get_mut_checked(pos)? = ch;
         Ok(())
     }
@@ -270,7 +270,7 @@ impl Display for CanvasError {
 impl std::error::Error for CanvasError {}
 
 pub trait DrawChecked {
-    fn draw_checked(&self, canvas: &mut Canvas) -> Result<()>;
+    fn draw_checked(&self, canvas: &mut Canvas) -> Result;
 }
 
 pub trait Draw {

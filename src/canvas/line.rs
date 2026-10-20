@@ -38,7 +38,7 @@ impl Draw for Line {
 }
 
 impl DrawChecked for Line {
-    fn draw_checked(&self, canvas: &mut Canvas) -> Result<()> {
+    fn draw_checked(&self, canvas: &mut Canvas) -> Result {
         if !self.is_in_bounds(canvas) {
             return Err(OutOfBounds(self.pos));
         }

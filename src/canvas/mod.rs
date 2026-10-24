@@ -4,8 +4,9 @@ mod prims;
 pub use prims::{Size, Pos};
 
 use std::{fmt, ops, result};
-use fmt::{Display, Formatter};
+use fmt::{Display, Formatter, Alignment};
 use ops::{Index, IndexMut};
+use terminal_size::{terminal_size, Width};
 
 use CanvasError::*;
 
@@ -32,13 +33,43 @@ impl Display for Canvas {
             return Ok(());
         }
 
+        let target_width = f.width().unwrap_or(self.size.cols);
+
+        let total_pad = target_width.saturating_sub(self.size.cols);
+
+        if total_pad == 0 {
+            for (i, row) in self.data.chunks(self.size.cols).enumerate() {
+                if i > 0 {
+                    writeln!(f)?;
+                }
+                for &ch in row {
+                    write!(f, "{ch}")?;
+                }
+            }
+            return Ok(());
+        }
+
+        let fill = f.fill();
+        let alignment = f.align().unwrap_or(Alignment::Left);
+
+        let (left_pad, right_pad) = match alignment {
+            Alignment::Left => (0, total_pad),
+            Alignment::Center => (total_pad / 2, total_pad - (total_pad / 2)),
+            Alignment::Right => (total_pad, 0),
+        };
+
+        let left_str = fill.to_string().repeat(left_pad);
+        let right_str = fill.to_string().repeat(right_pad);
+
         for (i, row) in self.data.chunks(self.size.cols).enumerate() {
             if i > 0 {
                 writeln!(f)?;
             }
+            write!(f, "{left_str}")?;
             for &ch in row {
                 write!(f, "{ch}")?;
             }
+            write!(f, "{right_str}")?;
         }
 
         Ok(())
@@ -251,6 +282,15 @@ impl Canvas {
 
     pub fn clear(&mut self) {
         self.data.fill(' ');
+    }
+
+    pub fn print_centered(&self) {
+        let term_width = match terminal_size() {
+            Some((Width(w), _)) => w as usize,
+            None => self.size.cols,
+        };
+
+        println!("{:^1$}", self, term_width);
     }
 }
 

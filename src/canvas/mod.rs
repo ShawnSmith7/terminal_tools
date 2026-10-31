@@ -1,7 +1,9 @@
 pub mod line;
 mod prims;
+mod text_box;
 
 pub use prims::{Size, Pos};
+pub use text_box::TextBox;
 
 use std::{fmt, ops, result};
 use fmt::{Display, Formatter, Alignment};
@@ -97,12 +99,8 @@ impl Canvas {
         self.size
     }
 
-    pub fn is_in_bounds(&self, pos: Pos) -> bool {
-        pos.row < self.size.rows && pos.col < self.size.cols
-    }
-
     fn index_of_checked(&self, pos: Pos) -> Result<usize> {
-        if !self.is_in_bounds(pos) {
+        if !pos.is_in_bounds(self) {
             return Err(OutOfBounds(pos));
         }
 
@@ -309,10 +307,26 @@ impl Display for CanvasError {
 
 impl std::error::Error for CanvasError {}
 
+pub trait Draw {
+    fn draw(&self, canvas: &mut Canvas);
+}
+
+pub trait InBounds {
+    fn is_in_bounds(&self, canvas: &Canvas) -> bool;
+    fn pos(&self) -> Pos;
+}
+
 pub trait DrawChecked {
     fn draw_checked(&self, canvas: &mut Canvas) -> Result;
 }
 
-pub trait Draw {
-    fn draw(&self, canvas: &mut Canvas);
+impl<T: Draw + InBounds> DrawChecked for T {
+    fn draw_checked(&self, canvas: &mut Canvas) -> Result {
+        if !self.is_in_bounds(canvas) {
+            return Err(OutOfBounds(self.pos()));
+        }
+
+        self.draw(canvas);
+        Ok(())
+    }
 }

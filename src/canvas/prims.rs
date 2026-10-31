@@ -1,4 +1,5 @@
 use std::ops::Add;
+use super::{InBounds, Canvas};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Size {
@@ -38,5 +39,15 @@ impl Add for Pos {
             row: self.row + rhs.row,
             col: self.col + rhs.col,
         }
+    }
+}
+
+impl InBounds for Pos {
+    fn is_in_bounds(&self, canvas: &Canvas) -> bool {
+        self.row < canvas.size.rows && self.col < canvas.size.cols
+    }
+    
+    fn pos(&self) -> Self {
+        *self
     }
 }

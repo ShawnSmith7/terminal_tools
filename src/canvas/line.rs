@@ -1,7 +1,6 @@
-use super::{Pos, Canvas, CanvasError, DrawChecked, Draw, Result};
+use super::{Pos, Canvas, Draw, InBounds};
 
 use LineVariant::*;
-use CanvasError::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Line {
@@ -37,14 +36,33 @@ impl Draw for Line {
     }
 }
 
-impl DrawChecked for Line {
-    fn draw_checked(&self, canvas: &mut Canvas) -> Result {
-        if !self.is_in_bounds(canvas) {
-            return Err(OutOfBounds(self.pos));
+impl InBounds for Line {
+    fn is_in_bounds(&self, canvas: &Canvas) -> bool {
+        if self.len == 0 {
+            return true;
         }
 
-        self.draw(canvas);
-        Ok(())
+        if !self.pos.is_in_bounds(canvas) {
+            return false;
+        }
+
+        let canvas_size = canvas.size();
+        match self.variant {
+            Horiz => self.pos.col + self.len <= canvas_size.cols,
+            Vert => self.pos.row + self.len <= canvas_size.rows,
+            DiagDown => {
+                self.pos.row + self.len <= canvas_size.rows
+                    && self.pos.col + self.len <= canvas_size.cols
+            }
+            DiagUp => {
+                self.pos.row + self.len <= canvas_size.rows
+                    && self.pos.col + self.len <= canvas_size.cols
+            }
+        }
+    }
+
+    fn pos(&self) -> Pos {
+        self.pos
     }
 }
 
@@ -77,30 +95,6 @@ impl Line {
     fn draw_diag_up<'a>(&self, rows: impl Iterator<Item = &'a mut [char]> + DoubleEndedIterator) {
         for (i, row) in rows.rev().enumerate() {
             unsafe { *row.get_unchecked_mut(self.pos.col + 2 * i) = self.ch; }
-        }
-    }
-
-    pub fn is_in_bounds(&self, canvas: &Canvas) -> bool {
-        if self.len == 0 {
-            return true;
-        }
-
-        let canvas_size = canvas.size();
-        if !canvas.is_in_bounds(self.pos) {
-            return false;
-        }
-
-        match self.variant {
-            Horiz => self.pos.col + self.len <= canvas_size.cols,
-            Vert => self.pos.row + self.len <= canvas_size.rows,
-            DiagDown => {
-                self.pos.row + self.len <= canvas_size.rows
-                    && self.pos.col + self.len <= canvas_size.cols
-            }
-            DiagUp => {
-                self.pos.row + self.len <= canvas_size.rows
-                    && self.pos.col + self.len <= canvas_size.cols
-            }
         }
     }
 }

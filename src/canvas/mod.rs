@@ -9,6 +9,7 @@ use std::{fmt, ops, result};
 use fmt::{Display, Formatter, Alignment};
 use ops::{Index, IndexMut};
 use terminal_size::{terminal_size, Width};
+use colored::*;
 
 use CanvasError::*;
 
@@ -17,14 +18,14 @@ pub type Result<T = ()> = result::Result<T, CanvasError>;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Canvas {
     size: Size,
-    data: Vec<char>,
+    data: Vec<ColoredString>,
 }
 
 impl From<Size> for Canvas {
     fn from(size: Size) -> Self {
         Self {
             size,
-            data: vec![' '; size.rows * size.cols],
+            data: vec![" ".normal(); size.rows * size.cols],
         }
     }
 }
@@ -44,7 +45,7 @@ impl Display for Canvas {
                 if i > 0 {
                     writeln!(f)?;
                 }
-                for &ch in row {
+                for ch in row {
                     write!(f, "{ch}")?;
                 }
             }
@@ -68,7 +69,7 @@ impl Display for Canvas {
                 writeln!(f)?;
             }
             write!(f, "{left_str}")?;
-            for &ch in row {
+            for ch in row {
                 write!(f, "{ch}")?;
             }
             write!(f, "{right_str}")?;
@@ -79,7 +80,7 @@ impl Display for Canvas {
 }
 
 impl Index<Pos> for Canvas {
-    type Output = char;
+    type Output = ColoredString;
 
     fn index(&self, pos: Pos) -> &Self::Output {
         let idx = self.index_of(pos);
@@ -119,36 +120,36 @@ impl Canvas {
         pos.row * self.size.cols + pos.col
     }
 
-    pub fn get_checked(&self, pos: Pos) -> Result<char> {
+    pub fn get_checked(&self, pos: Pos) -> Result<&ColoredString> {
         let idx = self.index_of_checked(pos)?;
-        unsafe { Ok(*self.data.get_unchecked(idx)) }
+        unsafe { Ok(self.data.get_unchecked(idx)) }
     }
 
-    pub fn get(&self, pos: Pos) -> char {
+    pub fn get(&self, pos: Pos) -> &ColoredString {
         let idx = self.index_of(pos);
-        unsafe { *self.data.get_unchecked(idx) }
+        unsafe { &self.data.get_unchecked(idx) }
     }
 
-    pub fn get_mut_checked(&mut self, pos: Pos) -> Result<&mut char> {
+    pub fn get_mut_checked(&mut self, pos: Pos) -> Result<&mut ColoredString> {
         let idx = self.index_of_checked(pos)?;
         unsafe { Ok(self.data.get_unchecked_mut(idx)) }
     }
 
-    pub fn get_mut(&mut self, pos: Pos) -> &mut char {
+    pub fn get_mut(&mut self, pos: Pos) -> &mut ColoredString {
         let idx = self.index_of(pos);
         unsafe { self.data.get_unchecked_mut(idx) }
     }
 
-    pub fn set_checked(&mut self, pos: Pos, ch: char) -> Result {
+    pub fn set_checked(&mut self, pos: Pos, ch: ColoredString) -> Result {
         *self.get_mut_checked(pos)? = ch;
         Ok(())
     }
 
-    pub fn set(&mut self, pos: Pos, ch: char) {
+    pub fn set(&mut self, pos: Pos, ch: ColoredString) {
         *self.get_mut(pos) = ch;
     }
 
-    pub fn get_row_slice_checked(&self, pos: Pos, len: usize) -> Result<&[char]> {
+    pub fn get_row_slice_checked(&self, pos: Pos, len: usize) -> Result<&[ColoredString]> {
         let idx = self.index_of_checked(pos)?;
 
         if len > self.size.cols.saturating_sub(pos.col) {
@@ -158,7 +159,7 @@ impl Canvas {
         unsafe { Ok(self.data.get_unchecked(idx..idx + len)) }
     }
 
-    pub fn get_row_slice(&self, pos: Pos, len: usize) -> &[char] {
+    pub fn get_row_slice(&self, pos: Pos, len: usize) -> &[ColoredString] {
         #[cfg(debug_assertions)]
         {
             self.get_row_slice_checked(pos, len).unwrap()
@@ -170,7 +171,7 @@ impl Canvas {
         }
     }
 
-    pub fn get_row_slice_mut_checked(&mut self, pos: Pos, len: usize) -> Result<&mut [char]> {
+    pub fn get_row_slice_mut_checked(&mut self, pos: Pos, len: usize) -> Result<&mut [ColoredString]> {
         let idx = self.index_of_checked(pos)?;
 
         if len > self.size.cols.saturating_sub(pos.col) {
@@ -180,7 +181,7 @@ impl Canvas {
         unsafe { Ok(self.data.get_unchecked_mut(idx..idx + len)) }
     }
 
-    pub fn get_row_slice_mut(&mut self, pos: Pos, len: usize) -> &mut [char] {
+    pub fn get_row_slice_mut(&mut self, pos: Pos, len: usize) -> &mut [ColoredString] {
         #[cfg(debug_assertions)]
         {
             self.get_row_slice_mut_checked(pos, len).unwrap()
@@ -196,7 +197,7 @@ impl Canvas {
         &self,
         start_row: usize,
         end_row: usize,
-    ) -> Result<impl Iterator<Item = &[char]> + DoubleEndedIterator> {
+    ) -> Result<impl Iterator<Item = &[ColoredString]> + DoubleEndedIterator> {
         if start_row > end_row || end_row > self.size.rows {
             return Err(OutOfBounds(Pos::new(start_row, 0)));
         }
@@ -208,7 +209,7 @@ impl Canvas {
         &self,
         start_row: usize,
         end_row: usize,
-    ) -> impl Iterator<Item = &[char]> + DoubleEndedIterator {
+    ) -> impl Iterator<Item = &[ColoredString]> + DoubleEndedIterator {
         #[cfg(debug_assertions)]
         {
             self.get_rows_checked(start_row, end_row).unwrap()
@@ -224,7 +225,7 @@ impl Canvas {
         &self,
         start_row: usize,
         end_row: usize,
-    ) -> impl Iterator<Item = &[char]> + DoubleEndedIterator {
+    ) -> impl Iterator<Item = &[ColoredString]> + DoubleEndedIterator {
         let start_idx = start_row * self.size.cols;
         let end_idx = end_row * self.size.cols;
 
@@ -239,7 +240,7 @@ impl Canvas {
         &mut self,
         start_row: usize,
         end_row: usize
-    ) -> Result<impl Iterator<Item = &mut [char]> + DoubleEndedIterator> {
+    ) -> Result<impl Iterator<Item = &mut [ColoredString]> + DoubleEndedIterator> {
         if start_row > end_row || end_row > self.size.rows {
             return Err(OutOfBounds(Pos::new(start_row, 0)));
         }
@@ -251,7 +252,7 @@ impl Canvas {
         &mut self,
         start_row: usize,
         end_row: usize,
-    ) -> impl Iterator<Item = &mut [char]> + DoubleEndedIterator {
+    ) -> impl Iterator<Item = &mut [ColoredString]> + DoubleEndedIterator {
         #[cfg(debug_assertions)]
         {
             self.get_rows_mut_checked(start_row, end_row).unwrap()
@@ -267,7 +268,7 @@ impl Canvas {
         &mut self,
         start_row: usize,
         end_row: usize,
-    ) -> impl Iterator<Item = &mut [char]> + DoubleEndedIterator {
+    ) -> impl Iterator<Item = &mut [ColoredString]> + DoubleEndedIterator {
         let start_idx = start_row * self.size.cols;
         let end_idx = end_row * self.size.cols;
 
@@ -279,7 +280,7 @@ impl Canvas {
     }
 
     pub fn clear(&mut self) {
-        self.data.fill(' ');
+        self.data.fill(" ".normal());
     }
 
     pub fn print_centered(&self) {

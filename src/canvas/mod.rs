@@ -282,13 +282,13 @@ impl Canvas {
         self.data.fill(' ');
     }
 
-    pub fn print_centered(&self) {
+    pub fn fmt_centered(&self) -> String {
         let term_width = match terminal_size() {
             Some((Width(w), _)) => w as usize,
             None => self.size.cols,
         };
 
-        println!("{:^1$}", self, term_width);
+        format!("{:^1$}", self, term_width)
     }
 }
 

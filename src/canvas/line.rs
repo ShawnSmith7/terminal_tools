@@ -1,13 +1,12 @@
 use super::{Pos, Canvas, Draw, InBounds};
-use colored::*;
 
 use LineVariant::*;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Line {
     pub pos: Pos,
     pub len: usize,
-    pub ch: ColoredString,
+    pub ch: char,
     pub variant: LineVariant,
 }
 
@@ -68,7 +67,7 @@ impl InBounds for Line {
 }
 
 impl Line {
-    pub fn new(pos: Pos, len: usize, ch: ColoredString, variant: LineVariant) -> Self {
+    pub fn new(pos: Pos, len: usize, ch: char, variant: LineVariant) -> Self {
         Self {
             pos,
             len,
@@ -78,24 +77,24 @@ impl Line {
     }
 
     fn draw_horiz(&self, canvas: &mut Canvas) {
-        canvas.get_row_slice_mut(self.pos, self.len).fill(self.ch.clone());
+        canvas.get_row_slice_mut(self.pos, self.len).fill(self.ch);
     }
 
-    fn draw_vert<'a>(&self, rows: impl Iterator<Item = &'a mut [ColoredString]>) {
+    fn draw_vert<'a>(&self, rows: impl Iterator<Item = &'a mut [char]>) {
         for row in rows {
-            unsafe { *row.get_unchecked_mut(self.pos.col) = self.ch.clone(); }
+            unsafe { *row.get_unchecked_mut(self.pos.col) = self.ch; }
         }
     }
 
-    fn draw_diag_down<'a>(&self, rows: impl Iterator<Item = &'a mut [ColoredString]>) {
+    fn draw_diag_down<'a>(&self, rows: impl Iterator<Item = &'a mut [char]>) {
         for (i, row) in rows.enumerate() {
-            unsafe { *row.get_unchecked_mut(self.pos.col + 2 * i) = self.ch.clone(); }
+            unsafe { *row.get_unchecked_mut(self.pos.col + 2 * i) = self.ch; }
         }
     }
 
-    fn draw_diag_up<'a>(&self, rows: impl Iterator<Item = &'a mut [ColoredString]> + DoubleEndedIterator) {
+    fn draw_diag_up<'a>(&self, rows: impl Iterator<Item = &'a mut [char]> + DoubleEndedIterator) {
         for (i, row) in rows.rev().enumerate() {
-            unsafe { *row.get_unchecked_mut(self.pos.col + 2 * i) = self.ch.clone(); }
+            unsafe { *row.get_unchecked_mut(self.pos.col + 2 * i) = self.ch; }
         }
     }
 }
